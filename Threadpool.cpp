@@ -1,10 +1,10 @@
 /*************************************************************************
-# > File Name: Threadpool.c
+# > File Name: Threadpool.cpp
 # > Author: SSZL
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-16 18:16:10
-# > Revise Time: 2018-09-17 17:10:27
+# > Revise Time: 2018-09-17 17:17:42
  ************************************************************************/
 
 #include<stdio.h>
