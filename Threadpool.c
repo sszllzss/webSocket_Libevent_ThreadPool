@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-16 18:16:10
-# > Revise Time: 2018-09-17 14:48:44
+# > Revise Time: 2018-09-17 16:43:44
  ************************************************************************/
 
 #include<stdio.h>
@@ -28,13 +28,13 @@ struct threadpool_t{
     pthread_t adjust_tid;//线程管理者tip
     pthread_list_t *threads;//存放线程池中每个线程的tid，列表
     thread_pool_task_queue_t *threadpool_task_queue;//任务队列
-    int min_thr_num;//线程池最小线程数
-    int busy_thr_num;//忙碌线程个数
-    int wait_exit_thr_num;//要销毁的线程个数
+    unsigned int min_thr_num;//线程池最小线程数
+    unsigned int busy_thr_num;//忙碌线程个数
+    unsigned int wait_exit_thr_num;//要销毁的线程个数
 
     int shutdown;//标志位，线程池使用状态， true 或 false
 };
-#define DEFAULT_TIME 10                 /*10s检测一次*/
+#define DEFAULT_TIME 100                 /*100ms检测一次*/
 #define MIN_WAIT_TASK_NUM 10            /*如果queue_size > MIN_WAIT_TASK_NUM 添加新的线程到线程池*/ 
 #define DEFAULT_THREAD_VARY 10          /*每次创建和销毁线程的个数*/
 #define TH_CREATE_RETRY_NUM 2           /* 线程创建失败重试次数 */
@@ -79,7 +79,6 @@ threadpool_t *threadpool_create(int min_thr_num)
         memset(pool, 0, sizeof(threadpool_t));
 
         pool->min_thr_num = min_thr_num;//线程最小值
-        pool->busy_thr_num = min_thr_num;//活着的线程数 初值=最小线程数
         pool->shutdown = false;//不关闭线程
         /* 创建线程列表 */
         pool->threads = new pthread_list_t();
@@ -112,7 +111,7 @@ threadpool_t *threadpool_create(int min_thr_num)
         for (i = 0; i < min_thr_num; i++) {
             pthread_t pid=0;
             int ret = pthread_create(&pid, &attr, threadpool_thread, (void *)pool);/*pool指向当前线程池*/
-            if(pid !=0)
+            if(ret !=0)
             {
                 De_fprintf(stderr, "creatd thread fail:%s\r\n", strerror(ret));
                 break;
@@ -193,7 +192,7 @@ void *threadpool_thread(void *threadpool)
                 pool->wait_exit_thr_num--;
 
                 /*如果线程池里线程个数大于最小值时可以结束当前线程*/
-                if ((int)pool->threads->size() > pool->min_thr_num) {
+                if ((unsigned)pool->threads->size() > pool->min_thr_num) {
                     De_printf("thread 0x%x is exiting\n", (unsigned int)pthread_self());
                     pool->threads->remove(pthread_self());
                     pthread_mutex_unlock(&(pool->lock));
@@ -218,7 +217,7 @@ void *threadpool_thread(void *threadpool)
         task_queue = pool->threadpool_task_queue;
         task.function = (*task_queue->begin()).function;
         task.arg = (*task_queue->begin()).arg;
-
+        task_queue->pop_front();
 
         /*通知可以有新的任务添加进来*/
         pthread_cond_broadcast(&(pool->queue_not_full));
@@ -259,19 +258,20 @@ void *adjust_thread(void *threadpool)
     threadpool_t *pool = (threadpool_t *)threadpool;
     while (!pool->shutdown) {
 
-        sleep(DEFAULT_TIME);                                    /*定时 对线程池管理*/
+        usleep(DEFAULT_TIME*1000);                                    /*定时 对线程池管理*/
 
         pthread_mutex_lock(&(pool->lock));
-        int queue_size = pool->threadpool_task_queue->size();                      /* 关注 任务数 */
-        int live_thr_num = pool->threads->size();                  /* 存活 线程数 */
+        unsigned int queue_size = pool->threadpool_task_queue->size();                      /* 关注 任务数 */
+        unsigned int live_thr_num = pool->threads->size();                  /* 存活 线程数 */
+        unsigned int max_size_th = pool->threads->max_size();
         pthread_mutex_unlock(&(pool->lock));
 
         pthread_mutex_lock(&(pool->thread_counter));
-        int busy_thr_num = pool->busy_thr_num;                  /* 忙着的线程数 */
+        unsigned int busy_thr_num = pool->busy_thr_num;                  /* 忙着的线程数 */
         pthread_mutex_unlock(&(pool->thread_counter));
-
         /* 创建新线程 算法： 任务数大于最小线程池个数, 且存活的线程数少于最大线程个数时 如：30>=10 && 40<100*/
-        if (queue_size >= MIN_WAIT_TASK_NUM && live_thr_num < (int)pool->threads->max_size()) {
+        if (queue_size >= MIN_WAIT_TASK_NUM && live_thr_num < max_size_th) {
+
             pthread_mutex_lock(&(pool->lock));  
             int add = 0;
             pthread_attr_t attr;
@@ -291,7 +291,10 @@ void *adjust_thread(void *threadpool)
                         i--;//i可以减为 -1 -1++ = 0
                     }
                     else
+                    {
                         add = 0;
+                        De_fprintf(stderr,"new pthread_list_t fail\r\n");
+                    }
                 }
                 else
                 {
@@ -383,7 +386,7 @@ int threadpool_destroy(threadpool_t *pool)
         pthread_cond_broadcast(&(pool->queue_not_empty));
 
     }
-    for(pthread_list_t:: const_iterator iter;iter != pool->threads->end();iter++)
+    for(pthread_list_t:: const_iterator iter=pool->threads->begin();iter != pool->threads->end();iter++)
     {
         pthread_join(*iter, NULL);
     }
