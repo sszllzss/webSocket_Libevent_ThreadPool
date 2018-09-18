@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-16 18:16:10
-# > Revise Time: 2018-09-17 17:17:42
+# > Revise Time: 2018-09-18 21:18:59
  ************************************************************************/
 
 #include<stdio.h>
@@ -344,6 +344,14 @@ int threadpool_free(threadpool_t *pool)
     }
 
     if (pool->threadpool_task_queue) {
+        for(thread_pool_task_queue_t::iterator i=pool->threadpool_task_queue->begin();
+            i != pool->threadpool_task_queue->end();i++)
+        {
+            if((*i).arg != NULL)
+            {
+                free((*i).arg);
+            }
+        }
         delete pool->threadpool_task_queue;
     }
     if (pool->threads) {
