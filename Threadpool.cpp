@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-16 18:16:10
-# > Revise Time: 2018-09-18 21:18:59
+# > Revise Time: 2018-09-19 22:10:14
  ************************************************************************/
 
 #include<stdio.h>
@@ -15,6 +15,7 @@
 #include<string.h>
 #include<signal.h>
 #include"Threadpool.h"
+#include"config.h"
 struct threadpool_task_t{
     void *(*function)(void *);
     void *arg;
@@ -34,10 +35,18 @@ struct threadpool_t{
 
     int shutdown;//标志位，线程池使用状态， true 或 false
 };
+#ifndef DEFAULT_TIME
 #define DEFAULT_TIME 500                 /*100ms检测一次*/
+#endif
+#ifndef MIN_WAIT_TASK_NUM
 #define MIN_WAIT_TASK_NUM 10            /*如果queue_size > MIN_WAIT_TASK_NUM 添加新的线程到线程池*/ 
+#endif
+#ifndef DEFAULT_THREAD_VARY 
 #define DEFAULT_THREAD_VARY 10          /*每次创建和销毁线程的个数*/
+#endif
+#ifndef TH_CREATE_RETRY_NUM
 #define TH_CREATE_RETRY_NUM 2           /* 线程创建失败重试次数 */
+#endif
 void *threadpool_thread(void *threadpool);//线程函数
 void *adjust_thread(void *threadpool);//线程管理者线程函数
 int threadpool_destroy( threadpool_t *poll);//关闭线程池
