@@ -401,12 +401,20 @@ int base64_decode( const char *base64, unsigned char *bindata)
 //==============================================================================================================
 
 // 连接服务器
+#ifndef REPORT_LOGIN_CONNECT_TIMEOUT 
 #define REPORT_LOGIN_CONNECT_TIMEOUT      1000                                                                       // 登录连接超时设置 1000ms
+#endif
+#ifndef REPORT_LOGIN_RESPOND_TIMEOUT 
 #define REPORT_LOGIN_RESPOND_TIMEOUT      (1000 + REPORT_LOGIN_CONNECT_TIMEOUT)    // 登录等待回应超时设置 1000ms
+#endif
 // 指令发收
+#ifndef REPORT_ANALYSIS_ERR_RESEND_DELAY 
 #define REPORT_ANALYSIS_ERR_RESEND_DELAY    500     // 接收到回复内容但解析不通过, 延时 一段时间后重发指令      单位ms
+#endif
 // 生成握手key的长度
+#ifndef WEBSOCKET_SHAKE_KEY_LEN
 #define WEBSOCKET_SHAKE_KEY_LEN     16
+#endif
 /*
 // websocket根据data[0]判别数据包类型
 typedef enum{
@@ -490,7 +498,6 @@ int webSocket_buildRespondShakeKey(unsigned char *acceptKey, unsigned int accept
     //
     free(sha1Data);
     free(clientKey);
-    printf("%s\r\n", respondKey);
     return n;
 }
 /*******************************************************************************
@@ -513,12 +520,12 @@ int webSocket_matchShakeKey(unsigned char *myKey, unsigned int myKeyLen, unsigne
     //
     if(retLen != acceptKeyLen)
     {
-        printf("webSocket_matchShakeKey : len err\r\n%s\r\n%s\r\n%s\r\n", myKey, tempKey, acceptKey);
+        De_printf("webSocket_matchShakeKey : len err\r\n%s\r\n%s\r\n%s\r\n", myKey, tempKey, acceptKey);
         return -1;
     }
     else if(strcmp((const char *)tempKey, (const char *)acceptKey) != 0)
     {
-        printf("webSocket_matchShakeKey : str err\r\n%s\r\n%s\r\n", tempKey, acceptKey);
+        De_printf("webSocket_matchShakeKey : str err\r\n%s\r\n%s\r\n", tempKey, acceptKey);
         return -1;
     }
     return 0;
@@ -661,7 +668,7 @@ int webSocket_enPackage(unsigned char *data, unsigned int dataLen, unsigned char
             temp2 = data[i];
             *package++ = (char)(((~temp1)&temp2) | (temp1&(~temp2)));  // 异或运算后得到数据
             count += 1;
-            if(count >= sizeof(maskKey))    // maskKey[4]循环使用
+            if((unsigned)count >= sizeof(maskKey))    // maskKey[4]循环使用
                 count = 0;
         }
         len += i;
@@ -807,7 +814,7 @@ int webSocket_dePackage(unsigned char *data, unsigned int dataLen, unsigned char
             temp2 = data[i + dataStart];
             *package++ =  (char)(((~temp1)&temp2) | (temp1&(~temp2)));  // 异或运算后得到数据
             count += 1;
-            if(count >= sizeof(maskKey))    // maskKey[4]循环使用
+            if((unsigned)count >= sizeof(maskKey))    // maskKey[4]循环使用
                 count = 0;
             //printf("%.2X|%.2X|%.2X, ", temp1, temp2, *(package-1));
         }
@@ -847,7 +854,7 @@ int webSocket_clientLinkToServer(char *ip, int port, char *interface_path)
     //create unix socket  
     if((fd = socket(AF_INET,SOCK_STREAM, 0)) < 0) 
     {  
-        printf("webSocket_login : cannot create socket\r\n");  
+        De_printf("webSocket_login : cannot create socket\r\n");  
         return -1;  
     }
     /* 
@@ -867,7 +874,7 @@ int webSocket_clientLinkToServer(char *ip, int port, char *interface_path)
     {
         if(++timeOut > REPORT_LOGIN_CONNECT_TIMEOUT)
         {
-            printf("webSocket_login : %s:%d cannot connect !  %d\r\n" , ip, port, timeOut);  
+            De_printf("webSocket_login : %s:%d cannot connect !  %d\r\n" , ip, port, timeOut);  
             //
             sprintf((char *)loginBuf, "webSocket_login : %s:%d cannot connect !  %d" , (char *)ip, port, timeOut);
             close(fd); 
@@ -1047,7 +1054,7 @@ int webSocket_recv(int fd, unsigned char *data, unsigned int dataMaxLen)
         {
             webSocket_send(fd, webSocketPackage, retLen, true, WCT_PONG);
             // 显示数据
-            printf("webSocket_recv : PING %d\r\n%s\r\n" , retLen, webSocketPackage); 
+            De_printf("webSocket_recv : PING %d\r\n%s\r\n" , retLen, webSocketPackage); 
             free(recvBuf);
             free(webSocketPackage);
             return WCT_NULL;
@@ -1315,7 +1322,7 @@ int ev_webSocket_recv(struct bufferevent * bufferev, unsigned char *data, unsign
         {
             ev_webSocket_send(bufferev, webSocketPackage, retLen, true, WCT_PONG);
             // 显示数据
-            printf("webSocket_recv : PING %d\r\n%s\r\n" , retLen, webSocketPackage); 
+            De_printf("webSocket_recv : PING %d\r\n%s\r\n" , retLen, webSocketPackage); 
             free(recvBuf);
             free(webSocketPackage);
             return WCT_NULL;
