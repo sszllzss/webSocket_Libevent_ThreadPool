@@ -1,6 +1,6 @@
 #CC=arm-linux-gnueabihf-gcc	
 CC=g++
-app:  ev_thread_server_process ev_client_process ev_server_process
+app:  ev_thread_server_process ev_client_process 
 #app: client_process server_process
 #app:  ev_server_process ev_client_process
 ev_thread_server_process:websocket_common.o ev_thread_server_main.o evbase_threadpool.o Threadpool.o
