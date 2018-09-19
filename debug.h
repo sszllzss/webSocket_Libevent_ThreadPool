@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-16 15:30:40
-# > Revise Time: 2018-09-16 15:55:33
+# > Revise Time: 2018-09-19 22:04:42
  ************************************************************************/
 
 #ifndef _DEBUG_H
@@ -15,6 +15,8 @@
 #include<error.h>
 #include<errno.h>
 #include<err.h>
+#include"config.h"
+#ifdef DEBUG_PRINTF
 #define De_printf(str,args...) do{\
                                     printf("%s:%s:%d] ", __FUNCTION__, __FILE__, __LINE__);\
                                     printf(str,##args);\
@@ -29,4 +31,9 @@
                                     fprintf(f, str, ##args);\
                                     fprintf(f, "\r\n");\
                                     }while(0) 
+#else
+#define De_printf(str,args...) 
+#define De_perror(str)
+#define De_fprintf(f,str,args...)
+#endif
 #endif
