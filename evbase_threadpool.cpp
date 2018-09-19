@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-14 09:54:35
-# > Revise Time: 2018-09-19 00:13:29
+# > Revise Time: 2018-09-19 22:16:26
  ************************************************************************/
 
 #include<stdio.h>
@@ -24,8 +24,13 @@
 #include"websocket_common.h"
 #include <vector>
 #include "Threadpool.h"
+#include"config.h"
+#ifndef BASE_MAX_MONITOR_NUM
 #define BASE_MAX_MONITOR_NUM 1000//一个evbase监听最大事件数
+#endif
+#ifndef BASE_MANAGER_TIMER
 #define BASE_MANAGER_TIMER 1000 //1s管理一次
+#endif
 typedef struct
 {
     pthread_mutex_t monitor_num_locl;//监听数锁
@@ -50,7 +55,18 @@ struct evbase_thread_arg
 };
 void evbase_threadpool_destroy(evbase_threadpool_t * evb_thpool);
 void *manager_thread(void *evbase_threadpool);
+/*******************************************************************************
+ * 名称: evbase_threadpool_get_threadpool
+ * 功能: 获取evbase池的线程池
+ * 形参: *evb_thpool:evbase池指针
+ * 返回: 线程池指针
+ * 说明: 无
+ ******************************************************************************/
 void *evbase_thread(void *arg);
+threadpool_t *evbase_threadpool_get_threadpool(evbase_threadpool_t *ev_thpool)
+{
+    return  ev_thpool->pool;
+}
 /*******************************************************************************
  * 名称: evbase_threadpool_new
  * 功能: 创建evbase监听线程池
@@ -106,6 +122,7 @@ evbase_threadpool_t *evbase_threadpool_new(unsigned base_max_monitor_num,unsigne
         evbase_threadpool->evbase_thread_list.list->push_back(evb_th);
         //创建一个base监听
         threadpool_add(evbase_threadpool->pool, evbase_thread, evb_th_arg);
+        return evbase_threadpool; 
     }while(0);
     evbase_threadpool_destroy(evbase_threadpool);
     return NULL;
@@ -169,6 +186,7 @@ event_base * evbase_threadpool_add_event(evbase_threadpool_t * evb_thpool)
 {
     event_base *base = NULL;
     evbase_thread_vector::iterator i;
+    pthread_mutex_lock(&evb_thpool->evbase_thread_list.lock);
     for(i = evb_thpool->evbase_thread_list.list->begin();
         i != evb_thpool->evbase_thread_list.list->end(); i++)
     {
@@ -177,12 +195,14 @@ event_base * evbase_threadpool_add_event(evbase_threadpool_t * evb_thpool)
         {
             base = (*i)->base;
             (*i)->monitor_num++;
+            pthread_mutex_unlock(&(*i)->monitor_num_locl);
             break;
         }
         pthread_mutex_unlock(&(*i)->monitor_num_locl);
     }
     if(i == evb_thpool->evbase_thread_list.list->end())
     {
+        pthread_mutex_unlock(&evb_thpool->evbase_thread_list.lock);
         do{
             struct evbase_thread_arg *evb_th_arg = (struct evbase_thread_arg *)malloc(sizeof(struct evbase_thread_arg));
             if(evb_th_arg == NULL)
@@ -221,7 +241,9 @@ event_base * evbase_threadpool_add_event(evbase_threadpool_t * evb_thpool)
             threadpool_add(evb_thpool->pool, evbase_thread, evb_th_arg);
             base = evb_th_arg->base;
         }while(0);   
-    }
+    }else
+        pthread_mutex_unlock(&evb_thpool->evbase_thread_list.lock);
+
 
     return base;
 }
@@ -276,14 +298,14 @@ void *manager_thread(void *evbase_threadpool)
                 }
                 else
                 {
-                    i++;
                     pthread_mutex_unlock(&(*i)->monitor_num_locl);    
+                    i++;
                 }
             }
             else
             {
-                i++;
                 pthread_mutex_unlock(&(*i)->monitor_num_locl);    
+                i++;
             }
         }
         pthread_mutex_unlock(&evb_thpool->evbase_thread_list.lock);
@@ -292,20 +314,21 @@ void *manager_thread(void *evbase_threadpool)
 /*******************************************************************************
  * 名称: evbase_threadpool
  * 功能: evbase监听进程
- * 形参: evbase_threadpool:evbase池结构指针
+ * 形参: *arg:传入参数
  * 返回: 
  * 说明: 无
  ******************************************************************************/
 void *evbase_thread(void *arg)
 {
     struct evbase_thread_arg * evb_th_arg = (struct evbase_thread_arg *)arg;    
+    evbase_threadpool_t *evb_thpool = evb_th_arg->evb_thpool;
     struct event_base *base = evb_th_arg->base;
     //回收内存
     free(arg);
+    
+    event_reinit(base);
 
-    event_base_dispatch(base);
-
+    while(event_base_dispatch(base)==1);
     event_base_free(base);
-
     return NULL;
 }
