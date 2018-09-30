@@ -1,3 +1,12 @@
+/*************************************************************************
+# > File Name: websocket_common.h
+# > Author: SSZL
+# > Mail: sszllzss@foxmail.com
+# > Blog: sszlbg.cn
+# > Created Time: 2018-09-14 09:54:35
+# > Revise Time: 2018-09-24 14:30:16
+ ************************************************************************/
+
 
 #ifndef _WEBSOCKET_COMMON_H_
 #define _WEBSOCKET_COMMON_H_
@@ -9,16 +18,9 @@
 #include <time.h>       // 获取系统时间
 #include <unistd.h>
 #include <errno.h>
-#include <netinet/in.h>  
 #include <fcntl.h>                      // socket设置非阻塞模式
-#include <sys/types.h>  
-#include <sys/socket.h>  
-#include <sys/un.h> 
-#include <sys/epoll.h>  // epoll管理服务器的连接和接收触发
 #include <arpa/inet.h>
 #include <assert.h>
-#include <pthread.h>    // 使用多线程
-#include "debug.h"
 #define OPENSSL
 #define LIBEVENT
 #ifdef OPENSSL 
