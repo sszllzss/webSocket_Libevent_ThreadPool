@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-14 09:54:35
-# > Revise Time: 2018-09-19 22:16:26
+# > Revise Time: 2018-09-30 00:28:34
  ************************************************************************/
 
 #include<stdio.h>
@@ -13,18 +13,11 @@
 #include<sys/types.h>
 #include<sys/stat.h>
 #include<string.h>
-#include<signal.h>
-#include<sys/time.h>
-#include <arpa/inet.h>
-#include<event.h>
-#include<event2/buffer.h>
-#include<event2/bufferevent.h>
-#include<event2/event.h>
-#include<event2/event-config.h>
+#include<vector>
 #include"websocket_common.h"
-#include <vector>
-#include "Threadpool.h"
 #include"config.h"
+#include"evbase_threadpool.h"
+#include"debug.h"
 #ifndef BASE_MAX_MONITOR_NUM
 #define BASE_MAX_MONITOR_NUM 1000//一个evbase监听最大事件数
 #endif
@@ -46,7 +39,7 @@ struct evbase_threadpool_t{
     threadpool_t *pool;
     evbase_thread_list_t evbase_thread_list;
     pthread_t manager;//监听线程管理者线程
-
+    int shutdown;
 };
 struct evbase_thread_arg
 {
@@ -87,6 +80,9 @@ evbase_threadpool_t *evbase_threadpool_new(unsigned base_max_monitor_num,unsigne
         if(evbase_threadpool == NULL)
             break;
         memset(evbase_threadpool,0, sizeof(evbase_threadpool_t));
+
+        evbase_threadpool->shutdown = false;
+
         evbase_threadpool->pool = threadpool_create(min_thread_num);
         if(evbase_threadpool->pool == NULL)
             break;
@@ -98,8 +94,11 @@ evbase_threadpool_t *evbase_threadpool_new(unsigned base_max_monitor_num,unsigne
             break;
         }
 
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);//设置线程分离
         pthread_t pid=0;
-        int ret = pthread_create(&pid, NULL, manager_thread, evbase_threadpool);
+        int ret = pthread_create(&pid, &attr, manager_thread, evbase_threadpool);
         if(ret!=0)
             break;
         evbase_threadpool->manager = pid;
@@ -146,12 +145,13 @@ void evbase_threadpool_free(evbase_threadpool_t * evb_thpool)
         {
             if((*i)->base != NULL)
                 event_base_free((*i)->base);
+
+            pthread_mutex_lock(&(*i)->monitor_num_locl);    
             pthread_mutex_destroy(&(*i)->monitor_num_locl);    
             free(*i);
         }
         delete evb_thpool->evbase_thread_list.list;
     }
-    pthread_mutex_destroy(&evb_thpool->evbase_thread_list.lock);
     free(evb_thpool);
 }
 /*******************************************************************************
@@ -165,6 +165,9 @@ void evbase_threadpool_destroy(evbase_threadpool_t * evb_thpool)
 {
     if(evb_thpool == NULL)
         return;
+    pthread_mutex_lock(&evb_thpool->evbase_thread_list.lock);
+    pthread_mutex_destroy(&evb_thpool->evbase_thread_list.lock);
+    evb_thpool->shutdown = true;
     if(evb_thpool->manager != 0)
     {
         pthread_join(evb_thpool->manager, NULL);
@@ -280,7 +283,7 @@ void evbase_threadpool_close_event(evbase_threadpool_t *evb_thpool ,event_base *
 void *manager_thread(void *evbase_threadpool)
 {
     evbase_threadpool_t *evb_thpool = (evbase_threadpool_t*)evbase_threadpool; 
-    while(true)
+    while(!evb_thpool->shutdown)
     {
         usleep(BASE_MANAGER_TIMER*1000);        
         pthread_mutex_lock(&evb_thpool->evbase_thread_list.lock);
@@ -310,6 +313,7 @@ void *manager_thread(void *evbase_threadpool)
         }
         pthread_mutex_unlock(&evb_thpool->evbase_thread_list.lock);
     }
+    return NULL;
 }
 /*******************************************************************************
  * 名称: evbase_threadpool
