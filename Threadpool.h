@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-16 18:16:05
-# > Revise Time: 2018-09-19 22:04:40
+# > Revise Time: 2018-09-20 21:56:49
 # > 说明：threadpool_add 向线程池添加任务 arg参数只能是malloc还回的指针和 NULL
  ************************************************************************/
 
@@ -15,7 +15,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <deque>
-#include "debug.h"
 #include <list>
 typedef struct threadpool_task_t threadpool_task_t;
 typedef  std::deque<threadpool_task_t> thread_pool_task_queue_t;
