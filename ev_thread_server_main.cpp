@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-14 09:54:35
-# > Revise Time: 2018-09-19 21:53:44
+# > Revise Time: 2018-09-30 22:06:48
  ************************************************************************/
 
 #include<stdio.h>
@@ -15,16 +15,11 @@
 #include<string.h>
 #include<signal.h>
 #include<sys/time.h>
-#include <arpa/inet.h>
-#include<event.h>
-#include<event2/buffer.h>
-#include<event2/bufferevent.h>
-#include<event2/event.h>
 #include<event2/listener.h>
-#include<event2/event-config.h>
+#include<map>
+#include"evbase_threadpool.h"
 #include"websocket_common.h"
-#include <map>
-#include "evbase_threadpool.h"
+#include "debug.h"
 
 #define SERVER_PORT 8088
 #define BufferevMap  std::map<struct bufferevent *, sockaddr>
@@ -46,7 +41,6 @@ static int server_action(struct bufferevent * bufferev, char *buf, unsigned int 
     ret = ev_webSocket_recv(bufferev ,(unsigned char *)buf , bufLen);    // 使用websocket recv
     if(ret > 0)
     {
-
         char ip[INET_ADDRSTRLEN];
         struct sockaddr_in *address = NULL; 
         BufferevMap::iterator i;
@@ -62,14 +56,15 @@ static int server_action(struct bufferevent * bufferev, char *buf, unsigned int 
         else
             De_printf("client Unknown data len\\%d:%s\r\n", ret, buf);
 
-        if(strstr(buf, "connect") != NULL)     // 成功连上之后, 发个测试数据
+        if(strstr(buf, "connect ...\r\n") != NULL)     // 成功连上之后, 发个测试数据
+        {
+            printf("%s\r\n", buf);
             ret = ev_webSocket_send(bufferev,(unsigned char *) "Hello !", strlen("Hello !"), false, WCT_TXTDATA);
+        }
         else if(strstr(buf, "Hello") != NULL)
             ret = ev_webSocket_send(bufferev,(unsigned char *) "I am Server_Test", strlen("I am Server_Test"), false, WCT_TXTDATA);
         else
             ret = ev_webSocket_send(bufferev,(unsigned char *) "You are carefree ...", strlen("You are carefree ..."), false, WCT_TXTDATA);
-
-
     }
     return ret;
 }
@@ -152,7 +147,7 @@ static void  accept_conn_cb(struct evconnlistener *listener, evutil_socket_t fd,
         De_fprintf(stderr, "base get fill\r\n");
         return;
     }
-    struct bufferevent *bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE);
+    struct bufferevent *bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE );
     if(bev == NULL)
     {
         fprintf(stderr, "%s:%d[ bufferevent new error:%s\r\n",ip, ntohs(addr->sin_port), evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
@@ -163,7 +158,7 @@ static void  accept_conn_cb(struct evconnlistener *listener, evutil_socket_t fd,
     pthread_mutex_lock(&ws->clientMap_lock);
     ws->clientMap->insert(std::pair<struct bufferevent *, sockaddr>(bev ,*address));
     pthread_mutex_unlock(&ws->clientMap_lock);
-    printf("client connection:%s:%d\r\n",ip, ntohs(addr->sin_port));
+    De_printf("client connection:%s:%d\r\n",ip, ntohs(addr->sin_port));
     socklen = (int)socklen;
 }
 static void accpt_error_cb(struct evconnlistener *listener, void *ctx)
