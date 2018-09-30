@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-14 09:54:35
-# > Revise Time: 2018-09-19 13:24:41
+# > Revise Time: 2018-09-20 21:41:33
  ************************************************************************/
 
 #include<stdio.h>
@@ -58,7 +58,9 @@ static int server_action(struct bufferevent * bufferev, char *buf, unsigned int 
             printf("client Unknown data len\\%d:%s\r\n", ret, buf);
 
         if(strstr(buf, "connect") != NULL)     // 成功连上之后, 发个测试数据
+        {
             ret = ev_webSocket_send(bufferev,(unsigned char *) "Hello !", strlen("Hello !"), false, WCT_TXTDATA);
+        }
         else if(strstr(buf, "Hello") != NULL)
             ret = ev_webSocket_send(bufferev,(unsigned char *) "I am Server_Test", strlen("I am Server_Test"), false, WCT_TXTDATA);
         else
