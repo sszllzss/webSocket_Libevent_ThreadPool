@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-16 18:16:10
-# > Revise Time: 2018-09-19 22:10:14
+# > Revise Time: 2018-09-30 00:30:15
  ************************************************************************/
 
 #include<stdio.h>
@@ -14,6 +14,7 @@
 #include<sys/stat.h>
 #include<string.h>
 #include<signal.h>
+#include "debug.h"
 #include"Threadpool.h"
 #include"config.h"
 struct threadpool_task_t{
@@ -126,7 +127,7 @@ threadpool_t *threadpool_create(int min_thr_num)
                 break;
             }
             pool->threads->push_back(pid); 
-            printf("start thread 0x%x...\n", (unsigned int)pid);
+            /* De_printf("start thread 0x%x...\n", (unsigned int)pid); */
         }
         pthread_attr_destroy(&attr);
         if(i!=min_thr_num)
@@ -193,7 +194,7 @@ void *threadpool_thread(void *threadpool)
 
         /*queue_size == 0 说明没有任务，调 wait 阻塞在条件变量上, 若有任务，跳过该while*/
         while ((pool->threadpool_task_queue->size() == 0) && (!pool->shutdown)) {  
-            De_printf("thread 0x%x is waiting\n", (unsigned int)pthread_self());
+            /* De_printf("thread 0x%x is waiting\n", (unsigned int)pthread_self()); */
             pthread_cond_wait(&(pool->queue_not_empty), &(pool->lock));
 
             /*清除指定数目的空闲线程，如果要结束的线程个数大于0，结束线程*/
@@ -202,7 +203,7 @@ void *threadpool_thread(void *threadpool)
 
                 /*如果线程池里线程个数大于最小值时可以结束当前线程*/
                 if ((unsigned)pool->threads->size() > pool->min_thr_num) {
-                    De_printf("thread 0x%x is exiting\n", (unsigned int)pthread_self());
+                    /* De_printf("thread 0x%x is exiting\n", (unsigned int)pthread_self()); */
                     pool->threads->remove(pthread_self());
                     pthread_mutex_unlock(&(pool->lock));
                     pthread_exit(NULL);
@@ -216,7 +217,7 @@ void *threadpool_thread(void *threadpool)
         if (pool->shutdown) {
             pool->threads->remove(pthread_self());
             pthread_mutex_unlock(&(pool->lock));
-            De_printf("thread 0x%x is exiting\n", (unsigned int)pthread_self());
+            /* De_printf("thread 0x%x is exiting\n", (unsigned int)pthread_self()); */
             pthread_exit(NULL);     /* 线程自行结束 */
 
         }
@@ -235,7 +236,7 @@ void *threadpool_thread(void *threadpool)
         pthread_mutex_unlock(&(pool->lock));
 
         /*执行任务*/ 
-        De_printf("thread 0x%x start working\n", (unsigned int)pthread_self());
+        /* De_printf("thread 0x%x start working\n", (unsigned int)pthread_self()); */
         pthread_mutex_lock(&(pool->thread_counter));                            /*忙状态线程数变量琐*/
         pool->busy_thr_num++;                                                   /*忙状态线程数+1*/
         pthread_mutex_unlock(&(pool->thread_counter));
@@ -243,7 +244,7 @@ void *threadpool_thread(void *threadpool)
         //task.function(task.arg);                                              /*执行回调函数任务*/
         //
         //        /*任务结束处理*/ 
-        De_printf("thread 0x%x end working\n", (unsigned int)pthread_self());
+        /* De_printf("thread 0x%x end working\n", (unsigned int)pthread_self()); */
         pthread_mutex_lock(&(pool->thread_counter));
         pool->busy_thr_num--;                                       /*处理掉一个任务，忙状态数线程数-1*/
         pthread_mutex_unlock(&(pool->thread_counter));
@@ -403,9 +404,9 @@ int threadpool_destroy(threadpool_t *pool)
         pthread_cond_broadcast(&(pool->queue_not_empty));
 
     }
-    for(pthread_list_t:: const_iterator iter=pool->threads->begin();iter != pool->threads->end();iter++)
+    for(pthread_list_t::iterator i=pool->threads->begin(); i != pool->threads->end(); i++)
     {
-        pthread_join(*iter, NULL);
+        pthread_join(*(i), NULL);
     }
     threadpool_free(pool);
 
