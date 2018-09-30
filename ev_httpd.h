@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-24 13:53:55
-# > Revise Time: 2018-09-30 22:02:53
+# > Revise Time: 2018-09-30 23:00:22
  ************************************************************************/
 
 #ifndef _EV_HTTPD_H
@@ -94,14 +94,14 @@ struct httpChilent_t
     struct timeval final_optime;
 };
 /* resqonse这个函数 内部 对 client->lock进行了加锁 请在调用时 解锁 client->lock */
-int resqonse(struct httpChilent_t *client);//响应客户端
-httpServer_t * startHttpServe(struct event_base* base, u_short *port);//创建服务器
-int httpServer_free(httpServer_t * httpServer);//关闭并销毁服务器
-void httpChilent_Close(struct httpChilent_t * client);//关闭客户端连接
-
-void webSocket_buildHttpRespond(unsigned char *acceptKey, unsigned int acceptKeyLen, char *package);
+int resqonse(struct httpChilent_t *client);
+httpServer_t * startHttpServe(struct event_base* base, u_short *port);
+int httpServer_free(httpServer_t * httpServer);
+int http_resqonse_free(struct http_resqonse_t *resqonse);
+int http_request_free(struct http_request_t *request);
+void httpChilent_Close(struct httpChilent_t * client);
+void httpChilent_Close_nolock(struct httpChilent_t * client);
+int httpServer_setWebSocket_read_cb(httpServer_t * httpServer, webSocket_read_cb_t ws_read_cb,const char * url);
 int httpServer_setHttpHandler(httpServer_t *httpServer, httpd_handler_t handler);
-int httpServer_setWebSocket_read_cb(httpServer_t * httpServer, webSocket_read_cb_t ws_read_cb);
-
 #endif
 
