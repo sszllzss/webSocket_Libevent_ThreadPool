@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-16 12:08:15
-# > Revise Time: 2018-09-16 16:57:53
+# > Revise Time: 2018-09-20 22:06:16
  ************************************************************************/
 
 #include<stdio.h>
@@ -19,6 +19,7 @@
 #include<assert.h>
 #include<sys/time.h>
 #include"websocket_common.h"
+#include"debug.h"
 #define SERVER_PORT 8088
 #define SERVERR_IP "lot.sszlsszl.com"
 #define INADDR_LEN 50
