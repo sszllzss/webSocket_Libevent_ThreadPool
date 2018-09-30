@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-17 15:09:35
-# > Revise Time: 2018-09-19 20:17:06
+# > Revise Time: 2018-09-30 00:11:52
  ************************************************************************/
 
 #include<stdio.h>
@@ -33,8 +33,8 @@ int main(void)
     /* threadpool_t *thp = evbase_threadpool_get_threadpool(ev_thpool) ;*/
     printf("pool inited\r\n");
 
-    int num[20000], i;
-    for (i = 0; i < 20; i++) {
+    int num[2000], i;
+    for (i = 0; i < 2000; i++) {
         num[i]=i;
         printf("add task %d\n",i);
         threadpool_add(thp, process, (void*)&num[i]);     /* 向线程池中添加任务 */
