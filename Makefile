@@ -32,14 +32,14 @@ ev_thread_server_process_d:websocket_common_d.o ev_thread_server_main_d.o evbase
 ev_httpd_server_process_d:ev_websocket_d.o ev_httpd_d.o evbase_threadpool_d.o Threadpool_d.o ev_httpd_test_d.o
 	$(CC)  -Wall -o $@ $^ -lpthread -lcrypto -lssl -levent -g
 
-%.o:%.c config.h
+%.o:%.c include/config.h
 	$(CC) $^ -c -Wall
-%.o:%.cpp cnfig.h
+%.o:%.cpp include/cnfig.h
 	$(CC) $^ -c -o $@ -Wall
 
-%_d.o:%.c cnfig.h
+%_d.o:%.c include/cnfig.h
 	$(CC) $^ -c -g -o $@ -Wall
-%_d.o:%.cpp cnfig.h
+%_d.o:%.cpp include/cnfig.h
 	$(CC) $^ -c -g -o $@ -Wall
 
 .PHONY:clean
