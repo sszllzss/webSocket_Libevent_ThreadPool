@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-10-01 14:05:47
-# > Revise Time: 2018-10-01 14:13:53
+# > Revise Time: 2018-10-01 15:27:15
  ************************************************************************/
 
 #include<stdio.h>
@@ -14,8 +14,8 @@
 #include<sys/stat.h>
 #include<string.h>
 #include <signal.h>
-#include "ev_httpd.h"
-#include "debug.h"
+#include "include/ev_httpd.h"
+#include "include/debug.h"
 const char *getFileType(const char *filename){ //根据扩展名返回文件类型描述  
     char sExt[32];
     const char *p_start = filename + strlen(filename) - 1;
