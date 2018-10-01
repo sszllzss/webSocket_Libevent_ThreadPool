@@ -44,7 +44,7 @@ ev_httpd_server_process_d:ev_websocket_d.o ev_httpd_d.o evbase_threadpool_d.o Th
 
 .PHONY:clean
 clean:
-	@rm -rf config.h.gch client_process* server_process* ev_client_process* ev_server_process* ev_httpd_server_process* ev_thread_server_process* *.o 
+	@rm -rf include/config.h.gch client_process* server_process* ev_client_process* ev_server_process* ev_httpd_server_process* ev_thread_server_process* *.o 
 #调试模式下编译
 debug: ev_httpd_server_process_d  ev_ ev_client_process_d 	# HTTP-Websocket服务器（线程池Libevent库）与Websocket客户端（Libevent库）
 #debug: ev_thread_server_process_d  ev_ ev_client_process_d #WebSocket服务器（线程池Libevent库）与WebSocket客户端（Libevent库）
