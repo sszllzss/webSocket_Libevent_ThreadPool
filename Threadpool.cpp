@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-16 18:16:10
-# > Revise Time: 2018-09-30 00:30:15
+# > Revise Time: 2018-10-01 15:23:50
  ************************************************************************/
 
 #include<stdio.h>
@@ -14,9 +14,9 @@
 #include<sys/stat.h>
 #include<string.h>
 #include<signal.h>
-#include "debug.h"
-#include"Threadpool.h"
-#include"config.h"
+#include"include/debug.h"
+#include"include/Threadpool.h"
+#include"include/config.h"
 struct threadpool_task_t{
     void *(*function)(void *);
     void *arg;
