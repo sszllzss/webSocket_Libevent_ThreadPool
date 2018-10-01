@@ -8,8 +8,12 @@
 >>>> * yum install openssl
 >>>> * yum install openssl-devel
 >> * MakeFile文件说明
->>> * app:  ev_httpd_server_process ev_client_process HTTP-Websocket服务器（线程池Libevent库）与Websocket客户端（Libevent库）
->>> * app:  ev_thread_server_process ev_client_process WebSocket服务器（线程池Libevent库）与WebSocket客户端（Libevent库）
->>> * app:  ev_server_process ev_client_process WebSocket服务器（Libevent库）与WebSocket客户端（Libevent库）
->>> * app: client_process server_process WebSocket服务器（epoll）与WebSocket客户端
+>>> * app:  ev_httpd_server_process ev_client_process 
+>>>> * HTTP-Websocket服务器（线程池Libevent库）与Websocket客户端（Libevent库）
+>>> * app:  ev_thread_server_process ev_client_process 
+>>>> * WebSocket服务器（线程池Libevent库）与WebSocket客户端（Libevent库）
+>>> * app:  ev_server_process ev_client_process
+>>>> * WebSocket服务器（Libevent库）与WebSocket客户端（Libevent库）
+>>> * app: client_process server_process
+>>>> * WebSocket服务器（epoll）与WebSocket客户端
 >>> * 监听应用对应源码请 查看 MakeFile 文件
