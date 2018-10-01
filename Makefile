@@ -4,7 +4,7 @@ app:  ev_httpd_server_process ev_client_process
 #app:  ev_thread_server_process ev_client_process 
 #app: client_process server_process
 #app:  ev_server_process ev_client_process
-ev_httpd_server_process:ev_websocket.o ev_httpd.o evbase_threadpool.o Threadpool.o 
+ev_httpd_server_process:ev_websocket.o ev_httpd.o evbase_threadpool.o Threadpool.o ev_httpd_test.o
 	$(CC)  -Wall -o $@ $^ -lpthread -lcrypto -lssl -levent
 ev_thread_server_process:websocket_common.o ev_thread_server_main.o evbase_threadpool.o Threadpool.o 
 	$(CC)  -Wall -o $@ $^ -lpthread -lcrypto -lssl -levent
@@ -32,5 +32,5 @@ ev_server_process_d:websocket_common_d.o ev_server_main_d.o
 	$(CC) $^ -c -g -o $@ -Wall
 .PHONY:clean
 clean:
-	@rm -rf client_process* server_process* ev_client_process* ev_server_process* ev_thread_server_process* *.o 
+	@rm -rf client_process* server_process* ev_client_process* ev_server_process* ev_httpd_server_process* ev_thread_server_process* *.o 
 debug:ev_thread_server_process_d ev_client_process_d ev_thread_server_process_d	
