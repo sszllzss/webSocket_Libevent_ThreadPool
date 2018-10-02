@@ -17,3 +17,8 @@
 >>> * app: client_process server_process
 >>>> * WebSocket服务器（epoll）与WebSocket客户端
 >>> * 监听应用对应源码请 查看 MakeFile 文件
+>> * 动态库加载失败解决方法
+>>> * sudo vim /etc/ld.so.conf
+>>> * 把动态库的绝对路径添加到文件中 一行一个目录
+>>> * sudo ldconfig -v
+>>> * OK可以了
