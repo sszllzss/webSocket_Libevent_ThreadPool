@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-14 09:54:35
-# > Revise Time: 2018-10-01 15:29:13
+# > Revise Time: 2018-10-07 22:57:36
  ************************************************************************/
 
 #include "include/ev_websocket.h"
@@ -1106,6 +1106,7 @@ int ev_webSocket_recv(struct bufferevent * bufferev, unsigned char **data, unsig
     while(in_len == 0 || len < in_len)
     {
         ret = bufferevent_read(bufferev, temp, 1024);
+        
         if(ret>=0)
             len += ret;
         else
