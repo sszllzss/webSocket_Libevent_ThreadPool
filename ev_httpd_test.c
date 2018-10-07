@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-10-01 14:05:47
-# > Revise Time: 2018-10-01 15:27:15
+# > Revise Time: 2018-10-07 22:45:03
  ************************************************************************/
 
 #include<stdio.h>
@@ -242,7 +242,7 @@ int main(void)
     base = event_base_new();
     httpServer = startHttpServe(base ,&port);
     httpServer_setHttpHandler(httpServer, httpd_handler);
-    httpServer_setWebSocket_read_cb(httpServer, ws_read_cb, "/up");
+    httpServer_setWebSocket_read_cb(httpServer, ws_read_cb, "/");
     close_signal =  evsignal_new(base,SIGINT,close_signal_cb, base); 
     if(!close_signal || event_add(close_signal, NULL) < 0)
     {
