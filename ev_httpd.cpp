@@ -1,10 +1,10 @@
 /*************************************************************************
-# > File Name: ev_httpd.cpp
+# > File Name: Http_websocket/ev_httpd.cpp
 # > Author: SSZL
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-20 18:16:10
-# > Revise Time: 2018-10-07 23:09:18
+# > Revise Time: 2018-10-09 14:52:01
  ************************************************************************/
 #include <stdio.h>
 #include <sys/socket.h>
@@ -1084,6 +1084,10 @@ httpServer_t * startHttpServe(struct event_base* base, u_short *port)
 {
     httpServer_t * httpServer = NULL;
     struct sockaddr_in addr;
+#ifdef DYNAMIC_CONFING
+    if(SERVER_STRING_VARIALE == NULL)
+        return NULL;
+#endif
     do
     {
         if(base == NULL)
