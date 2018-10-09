@@ -1,10 +1,10 @@
 /*************************************************************************
-# > File Name: ev_httpd_test.c
+# > File Name: Http_websocket/ev_httpd_test.c
 # > Author: SSZL
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-10-01 14:05:47
-# > Revise Time: 2018-10-07 23:34:20
+# > Revise Time: 2018-10-09 14:55:04
  ************************************************************************/
 
 #include<stdio.h>
@@ -240,6 +240,7 @@ int main(void)
     struct event * close_signal; 
     httpServer_t * httpServer;
     base = event_base_new();
+    set_SERVER_STRING(NULL);
     httpServer = startHttpServe(base ,&port);
     httpServer_setHttpHandler(httpServer, httpd_handler);
     httpServer_setWebSocket_read_cb(httpServer, ws_read_cb, "/");
