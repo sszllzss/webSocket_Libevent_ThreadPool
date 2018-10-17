@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-20 18:16:10
-# > Revise Time: 2018-10-09 14:52:01
+# > Revise Time: 2018-10-16 17:10:19
  ************************************************************************/
 #include <stdio.h>
 #include <sys/socket.h>
@@ -88,11 +88,14 @@ struct httpServer_t
     httpd_handler_t handler;
     webSocket_read_cb_t ws_read_cb;
     char *webSocket_url;
+    void *arg;//用于向 Http处理穿参
 };
 
 int httpChilent_free(struct httpChilent_t* client);
 int accept_request(struct httpChilent_t * client);
 
+
+void httpServer_setArg(void * arg);
 
 int resqonse(struct httpChilent_t *client);
 httpServer_t * startHttpServe(struct event_base* base, u_short *port);
@@ -306,7 +309,6 @@ int resqonse(struct httpChilent_t *client)
                 }
                 break;
             }
-            break;
         }
         if(client->resqonse.HeadParameter == NULL)
         {
@@ -335,7 +337,16 @@ int resqonse(struct httpChilent_t *client)
 
         if(client->resqonse.resqonse_data != NULL)
         {
-            evbuffer_add(evbuff, client->resqonse.resqonse_data, client->resqonse.Resqonse_data_len);
+            unsigned add_len = 0;
+            while((evbuffer_add(evbuff, client->resqonse.resqonse_data + add_len, 1)) == 0)
+            {
+                add_len++;
+                if((add_len % HTTPSERVER_RECEIVE_BUFF_CHUNK_SIZE ) == 0)
+                    gettimeofday(&client->final_optime, NULL);
+                if(add_len >= client->resqonse.Resqonse_data_len)
+                    break;
+            }
+                
         }
     }while(0);
     if(client->stat != HTTP_WS_DATA)
@@ -431,7 +442,6 @@ int accept_request(struct httpChilent_t * client)
     }
 
 
-
     client->request.url[i] = '\0';
 
     if (strcasecmp(client->request.method, "GET") == 0)
@@ -485,7 +495,7 @@ int accept_request(struct httpChilent_t * client)
         evbuffer_unlock(client->receive_evbuff);
         if(buf == NULL)
             break;
-        else if(strcasecmp(client->request.method, "POST") &&  numchars == 0)
+        else if(strcasecmp(client->request.method, "POST") == 0 &&  numchars == 0)
         {
             client->request.request_data_len = evbuffer_get_length(evbuff);
             client->request.request_data = (char *)malloc(client->request.request_data_len);
@@ -493,11 +503,15 @@ int accept_request(struct httpChilent_t * client)
             {
                 http_request_free(&client->request);
                 pthread_mutex_unlock(&client->lock);
-                return REQUEST_BADREQUEST;        
+                return REQUEST_INTERNAL;        
             }
             evbuffer_lock(client->receive_evbuff);
             evbuffer_remove(evbuff, client->request.request_data, client->request.request_data_len);
             evbuffer_unlock(client->receive_evbuff);
+            break;
+        }
+        else if(numchars == 0)
+        {
             break;
         }
         if( client->request.HeadParameter == NULL)
@@ -539,7 +553,7 @@ int accept_request(struct httpChilent_t * client)
         client->request.HeadParameter->insert(std::pair<STRING, STRING>(key, v));    
     }
 
-    if(strcasecmp(client->request.method, "POST") && client->request.request_data == NULL)
+    if(strcasecmp(client->request.method, "POST") == 0 && client->request.request_data == NULL)
     {
         http_request_free(&client->request);
         pthread_mutex_unlock(&client->lock);
@@ -557,6 +571,7 @@ static void bufferev_write_cb(struct bufferevent *bev,void *ctx)
     bev = (struct bufferevent *)bev;
     httpChilent_t *client = (httpChilent_t *)ctx;
     pthread_mutex_lock(&client->lock);
+    gettimeofday(&client->final_optime,NULL);
     if( client->stat != HTTP_WS_DATA)
         client->stat = HTTP_IDLE;
     pthread_mutex_unlock(&client->lock);
@@ -671,7 +686,8 @@ void *httpd_handler_thread(void *arg)
                 BufferevMap::iterator v = httpServer->clientMap->find(bev);    
                 if(httpServer->clientMap->end() == v)
                 {
-                    break;
+                    pthread_mutex_unlock(&httpServer->clientMap_lock);
+                    return NULL;
                 }
                 pthread_mutex_unlock(&httpServer->clientMap_lock);
                 pthread_mutex_lock(&client->lock);
@@ -693,7 +709,6 @@ void *httpd_handler_thread(void *arg)
     }while(0);
     pthread_mutex_unlock(&client->lock);
     return NULL;
-
 }
 
 void *ws_read_cb_thread(void *arg)
@@ -780,16 +795,24 @@ void *http_supervise_thread(void * arg)
         usleep(1000*HTTPSERVER_SUPERVISE_TIME);
         pthread_mutex_lock(&httpServer->lock);
         pthread_mutex_lock(&httpServer->clientMap_lock);
-forstart:
         for(BufferevMap::iterator i = httpServer->clientMap->begin();
-            i != httpServer->clientMap->end();i++)
+            i != httpServer->clientMap->end();)
         {
             struct timeval date;
             gettimeofday(&date, NULL);
-            if((i->second)->stat != HTTP_WS_DATA && (date.tv_sec - (i->second)->final_optime.tv_sec) > HTTPSERVER_IDLE_TIMEROUT)
+            pthread_mutex_lock(&i->second->lock);
+            if(((i->second->stat == HTTP_CONNECTED) 
+              ||(i->second->stat == HTTP_IDLE)
+              ||(i->second->stat == HTTP_DISCONNECTED))
+              &&(date.tv_sec - (i->second)->final_optime.tv_sec) > HTTPSERVER_IDLE_TIMEROUT)
             {
-                httpChilent_Close_nolock(i->second);
-                goto forstart;
+                pthread_mutex_unlock(&i->second->lock);
+                httpChilent_Close_nolock((i++)->second);
+            }
+            else
+            {
+                pthread_mutex_unlock(&i->second->lock);
+                i++;
             }
         }
         pthread_mutex_unlock(&httpServer->clientMap_lock);
@@ -849,7 +872,6 @@ static void bufferev_event_cb(struct bufferevent *bev, short events,void *ctx)
     struct sockaddr_in *address = NULL; 
     char ip[INET_ADDRSTRLEN];
     BufferevMap::iterator i;
-
     do
     {
         if(client == NULL)
@@ -885,7 +907,6 @@ static void bufferev_event_cb(struct bufferevent *bev, short events,void *ctx)
     if(client != NULL)
     {
         pthread_mutex_lock(&client->lock);
-
         evbase_threadpool_close_event(client->httpServer->evb_thpool, bufferevent_get_base(bev));
         pthread_mutex_lock(&client->httpServer->clientMap_lock);
         client->httpServer->clientMap->erase(bev);
@@ -903,7 +924,7 @@ void httpChilent_Close_nolock(struct httpChilent_t * client)
     struct sockaddr_in *address = NULL; 
     char ip[INET_ADDRSTRLEN];
     BufferevMap::iterator i;
-
+    while(evbuffer_get_length(bufferevent_get_output(client->bev)) > 0);
     do
     {
         if(client == NULL)
@@ -922,7 +943,6 @@ void httpChilent_Close_nolock(struct httpChilent_t * client)
                 De_printf("Connection close: Unknown\r\n");
     }
     while(0);
-    printf("连接关闭\r\n");
     bufferevent_lock(client->bev);
     bufferevent_disable(client->bev, EV_WRITE | EV_READ);
     if(client != NULL)
@@ -941,6 +961,7 @@ void httpChilent_Close(struct httpChilent_t * client)
 {
     if(client == NULL)
         return;
+    while(evbuffer_get_length(bufferevent_get_output(client->bev)) > 0);
     bufferev_event_cb(client->bev, BEV_EVENT_EOF, client);
 }
 static void listener_cd(struct evconnlistener *listener, evutil_socket_t fd, struct sockaddr *sa, int socklen, void *arg)
@@ -953,7 +974,7 @@ static void listener_cd(struct evconnlistener *listener, evutil_socket_t fd, str
     inet_ntop(AF_INET, &addr->sin_addr, ip, INET_ADDRSTRLEN);
 
     event_base *base = evbase_threadpool_add_event(httpServer->evb_thpool);
-    if(!base)
+    if(base == NULL)
     {
         De_fprintf(stderr, "%s:%d[ base get fall!\r\n",ip, ntohs(addr->sin_port));
         return;
@@ -1079,7 +1100,19 @@ int httpServer_free(httpServer_t * httpServer)
     return 0;
 
 }
-
+void* httpServer_getArg(httpServer_t *httpServer)
+{
+    pthread_mutex_lock(&httpServer->lock);
+    void * arg = httpServer->arg;
+    pthread_mutex_unlock(&httpServer->lock);
+    return arg;
+}
+void httpServer_setArg(httpServer_t *httpServer, void * arg)
+{
+    pthread_mutex_lock(&httpServer->lock);
+    httpServer->arg = arg;
+    pthread_mutex_unlock(&httpServer->lock);
+}
 httpServer_t * startHttpServe(struct event_base* base, u_short *port)
 {
     httpServer_t * httpServer = NULL;
