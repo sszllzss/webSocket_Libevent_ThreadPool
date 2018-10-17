@@ -4,7 +4,7 @@
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-10-01 14:05:47
-# > Revise Time: 2018-10-09 14:55:04
+# > Revise Time: 2018-10-11 23:53:30
  ************************************************************************/
 
 #include<stdio.h>
@@ -141,7 +141,14 @@ void serve_file(struct httpChilent_t *  client, const char *filename)
         client->resqonse.resqonseCode = HTTP_OK;
         client->resqonse.HeadParameter->insert(HaedParameteMapPairi("Content-Type", getFileType(filename)));
         client->resqonse.HeadParameter->insert(HaedParameteMapPairi("Content-Length",num));
-        if(read(fp, client->resqonse.resqonse_data, client->resqonse.Resqonse_data_len) == -1)
+        int rec;
+        while((rec = read(fp, client->resqonse.resqonse_data, 1024)) >0)
+        {
+            pthread_mutex_lock(&client->lock);
+            gettimeofday(&client->final_optime,NULL);
+            pthread_mutex_unlock(&client->lock);
+        }
+        if(rec == -1)
         {
             perror("rev");
             free(client->resqonse.resqonse_data);
