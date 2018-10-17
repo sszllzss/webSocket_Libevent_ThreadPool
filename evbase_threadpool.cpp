@@ -1,10 +1,10 @@
 /*************************************************************************
-# > File Name: evbase_threadpool.cpp
+# > File Name: Http_websocket/evbase_threadpool.cpp
 # > Author: SSZL
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-14 09:54:35
-# > Revise Time: 2018-10-01 15:30:35
+# > Revise Time: 2018-10-11 15:31:44
  ************************************************************************/
 
 #include<stdio.h>
@@ -203,6 +203,7 @@ event_base * evbase_threadpool_add_event(evbase_threadpool_t * evb_thpool)
         }
         pthread_mutex_unlock(&(*i)->monitor_num_locl);
     }
+    
     if(i == evb_thpool->evbase_thread_list.list->end())
     {
         pthread_mutex_unlock(&evb_thpool->evbase_thread_list.lock);
@@ -216,6 +217,7 @@ event_base * evbase_threadpool_add_event(evbase_threadpool_t * evb_thpool)
             {
                 free(evb_th_arg);
                 break;
+
             }
             evb_th_arg->evb_thpool = evb_thpool;
 
@@ -325,7 +327,7 @@ void *manager_thread(void *evbase_threadpool)
 void *evbase_thread(void *arg)
 {
     struct evbase_thread_arg * evb_th_arg = (struct evbase_thread_arg *)arg;    
-    evbase_threadpool_t *evb_thpool = evb_th_arg->evb_thpool;
+    //evbase_threadpool_t *evb_thpool = evb_th_arg->evb_thpool;
     struct event_base *base = evb_th_arg->base;
     //回收内存
     free(arg);
