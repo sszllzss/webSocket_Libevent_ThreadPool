@@ -1,10 +1,10 @@
 /*************************************************************************
-# > File Name: ev_websocket.h
+# > File Name: Http_websocket/include/ev_websocket.h
 # > Author: SSZL
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-14 09:54:35
-# > Revise Time: 2018-10-01 15:18:56
+# > Revise Time: 2018-10-14 16:42:23
  ************************************************************************/
 
 
@@ -54,6 +54,7 @@ struct bufferevent *  ev_webSocket_clientLinkToServer(struct event_base * base, 
 int webSocket_buildRespondShakeKey(unsigned char *acceptKey, unsigned int acceptKeyLen, unsigned char *respondKey);
 int ev_webSocket_send(struct bufferevent * bufferev, unsigned char *data, unsigned int dataLen, bool mod, Websocket_CommunicationType type);
 int ev_webSocket_recv(struct bufferevent * bufferev, unsigned char **data, unsigned int *dataMaxLen, Websocket_CommunicationType *type);
+void webSocket_getRandomString(unsigned char *buf, unsigned int len);
 
 #endif
 
