@@ -1,10 +1,10 @@
 /*************************************************************************
-# > File Name: ev_httpd.h
+# > File Name: Http_websocket/include/ev_httpd.h
 # > Author: SSZL
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-24 13:53:55
-# > Revise Time: 2018-10-01 15:18:21
+# > Revise Time: 2018-10-15 15:47:33
  ************************************************************************/
 
 #ifndef _EV_HTTPD_H
@@ -103,5 +103,7 @@ void httpChilent_Close(struct httpChilent_t * client);
 void httpChilent_Close_nolock(struct httpChilent_t * client);
 int httpServer_setWebSocket_read_cb(httpServer_t * httpServer, webSocket_read_cb_t ws_read_cb,const char * url);
 int httpServer_setHttpHandler(httpServer_t *httpServer, httpd_handler_t handler);
+void httpServer_setArg(httpServer_t *httpServer, void * arg);
+void* httpServer_getArg(httpServer_t *httpServer);
 #endif
 
