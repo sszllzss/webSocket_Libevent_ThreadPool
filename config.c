@@ -1,10 +1,10 @@
 /*************************************************************************
-# > File Name: config.c
+# > File Name: Http_websocket/config.c
 # > Author: SSZL
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-10-09 13:33:44
-# > Revise Time: 2018-10-09 15:19:00
+# > Revise Time: 2018-10-11 14:30:33
  ************************************************************************/
 
 #include<stdio.h>
@@ -20,7 +20,7 @@ unsigned MIN_WAIT_TASK_NUM_VARIABLE = 20;/* 任务队列中任务数大于改值
 int DEFAULT_THREAD_VARY_VARIABLE = 10; /*每次创建和销毁线程的个数*/         
 int TH_CREATE_RETRY_NUM_VARIABLE = 2;/* 线程创建失败重试次数 */
 //evbade_threaadpool.cpp
-unsigned BASE_MAX_MONITOR_NUM_VARIABLE = 1000;//一个evbase监听最大事件数 默认次数
+unsigned BASE_MAX_MONITOR_NUM_VARIABLE = 2000;//一个evbase监听最大事件数 默认次数
 int BASE_MANAGER_TIMER_VARIABLE = 100;//100ms管理一次 base监听池管理线程多久检测一次 单位：ms
 int REPORT_LOGIN_CONNECT_TIMEOUT_VARIABLE = 1000; //websocket连接超时 登录连接超时设置 1000ms
 int REPORT_LOGIN_RESPOND_TIMEOUT_VARIABLE = REPORT_LOGIN_CONNECT_TIMEOUT_VARIABLE + 1000;// 登录等待回应超时设置 1000m
@@ -38,7 +38,11 @@ void set_SERVER_STRING(char * name)
 {
     if(SERVER_STRING_VARIALE == NULL)
     {
-        SERVER_STRING_VARIALE = (char *)malloc(strlen(name));
+        if(name == NULL)
+            SERVER_STRING_VARIALE = (char *)malloc(strlen("WebSocket-HttpServer/1.0.0"));
+        else
+            SERVER_STRING_VARIALE = (char *)malloc(strlen(name));
+
     }
     else
     {
