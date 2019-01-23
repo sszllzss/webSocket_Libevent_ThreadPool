@@ -1,10 +1,10 @@
 /*************************************************************************
-# > File Name: Http_websocket/ev_httpd.cpp
+# > File Name: ev_httpd.cpp
 # > Author: SSZL
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-20 18:16:10
-# > Revise Time: 2018-10-16 17:10:19
+# > Revise Time: 2018-11-08 12:35:37
  ************************************************************************/
 #include <stdio.h>
 #include <sys/socket.h>
@@ -24,7 +24,6 @@
 #include <map>
 #include <string>
 #include <iostream>
-#include "include/evbase_threadpool.h"
 #include "include/debug.h"
 #include "include/ev_websocket.h"
 #include "include/ev_httpd.h"
@@ -72,7 +71,6 @@ typedef enum
 
 }Accept_Request_Error;
 
-
 struct httpServer_t
 {
     pthread_mutex_t lock;
@@ -86,11 +84,25 @@ struct httpServer_t
     int port;
     int shutdown;
     httpd_handler_t handler;
-    webSocket_read_cb_t ws_read_cb;
+    webSocket_cb_t ws_read_cb;
+    webSocket_cb_t ws_weite_cb;
+    webSocket_cb_t ws_connect_cb;
+    webSocket_cb_t ws_disconnect_cb;
     char *webSocket_url;
     void *arg;//用于向 Http处理穿参
 };
-
+typedef enum 
+{
+    Ws_Cb_Type_read,
+    Ws_Cb_Type_write,
+    Ws_Cb_Type_connect,
+    Ws_Cb_Type_disconnect
+}WebddSocket_Thread_Cb_Type;
+typedef struct
+{
+    httpChilent_t * client;
+    WebddSocket_Thread_Cb_Type type;
+}WebddSocket_Thread_Cb_arg_t;
 int httpChilent_free(struct httpChilent_t* client);
 int accept_request(struct httpChilent_t * client);
 
@@ -104,10 +116,19 @@ int http_resqonse_free(struct http_resqonse_t *resqonse);
 int http_request_free(struct http_request_t *request);
 void httpChilent_Close(struct httpChilent_t * client);
 void httpChilent_Close_nolock(struct httpChilent_t * client);
-int httpServer_setWebSocket_read_cb(httpServer_t * httpServer, webSocket_read_cb_t ws_read_cb,const char * url);
+int httpServer_setWebSocket_read_cb(httpServer_t * httpServer, webSocket_cb_t ws_read_cb,const char * url);
 int httpServer_setHttpHandler(httpServer_t *httpServer, httpd_handler_t handler);
+void *webSocke_thread_cb(void * arg);
 
 
+threadpool_t * HttpServer_GetThreadPool(httpServer_t * httpServer)
+{
+    pthread_mutex_lock(&httpServer->lock);
+    threadpool_t *pool =  httpServer->pool;
+    pthread_mutex_unlock(&httpServer->lock);
+    return pool;
+
+}
 
 int resqonse(struct httpChilent_t *client)
 {
@@ -161,6 +182,10 @@ int resqonse(struct httpChilent_t *client)
             evbuffer_add_printf(evbuff, "Date: %s\r\n", timeStr);
             evbuffer_add_printf(evbuff, "\r\n");
             client->stat = HTTP_WS_DATA;
+            WebddSocket_Thread_Cb_arg_t * cb_arg = (WebddSocket_Thread_Cb_arg_t *)malloc(sizeof(WebddSocket_Thread_Cb_arg_t));
+            cb_arg->client = client;
+            cb_arg->type = Ws_Cb_Type_connect;
+            threadpool_add(evbase_threadpool_get_threadpool(client->httpServer->evb_thpool), webSocke_thread_cb, cb_arg);
             break;
         }
         else
@@ -574,6 +599,13 @@ static void bufferev_write_cb(struct bufferevent *bev,void *ctx)
     gettimeofday(&client->final_optime,NULL);
     if( client->stat != HTTP_WS_DATA)
         client->stat = HTTP_IDLE;
+    if(client->stat == HTTP_WS_DATA)
+    {
+        WebddSocket_Thread_Cb_arg_t * cb_arg = (WebddSocket_Thread_Cb_arg_t *)malloc(sizeof(WebddSocket_Thread_Cb_arg_t));
+        cb_arg->client = client;
+        cb_arg->type = Ws_Cb_Type_write;
+        threadpool_add(evbase_threadpool_get_threadpool(client->httpServer->evb_thpool), webSocke_thread_cb, cb_arg);
+    }
     pthread_mutex_unlock(&client->lock);
 }
 void *httpd_handler_thread(void *arg)
@@ -711,6 +743,34 @@ void *httpd_handler_thread(void *arg)
     return NULL;
 }
 
+void *webSocke_thread_cb(void * arg)
+{
+    if(arg != NULL)
+    {
+        WebddSocket_Thread_Cb_arg_t * cb_arg = (WebddSocket_Thread_Cb_arg_t *)arg;
+        switch(cb_arg->type)
+        {
+        case Ws_Cb_Type_connect:
+            if(cb_arg->client->httpServer->ws_connect_cb != NULL)
+                cb_arg->client->httpServer->ws_connect_cb(cb_arg->client);
+            break;
+        case Ws_Cb_Type_disconnect:
+            if(cb_arg->client->httpServer->ws_disconnect_cb != NULL)
+                cb_arg->client->httpServer->ws_disconnect_cb(cb_arg->client);
+            break;
+        case Ws_Cb_Type_write:
+            if(cb_arg->client->httpServer->ws_weite_cb != NULL)
+                cb_arg->client->httpServer->ws_weite_cb(cb_arg->client);
+            break;
+        case Ws_Cb_Type_read:
+            if(cb_arg->client->httpServer->ws_read_cb != NULL)
+                cb_arg->client->httpServer->ws_read_cb(cb_arg->client);
+            break;
+        }
+        free(arg);
+    }
+    return NULL;
+}
 void *ws_read_cb_thread(void *arg)
 {
     struct httpChilent_t *client = (struct httpChilent_t *)arg;
@@ -746,7 +806,7 @@ void *ws_read_cb_thread(void *arg)
             }
             evbuffer_unlock(client->receive_evbuff);
             free(buff);
-            webSocket_read_cb_t ws_read_cb = client->httpServer->ws_read_cb;
+            webSocket_cb_t ws_read_cb = client->httpServer->ws_read_cb;
             pthread_mutex_unlock(&client->lock);
             ws_read_cb(client);
             pthread_mutex_lock(&httpServer->clientMap_lock);
@@ -906,6 +966,13 @@ static void bufferev_event_cb(struct bufferevent *bev, short events,void *ctx)
     bufferevent_disable(bev, EV_WRITE | EV_READ);
     if(client != NULL)
     {
+        if(client->stat == HTTP_WS_DATA && client->ws_weite_cb_flage)
+        {
+            WebddSocket_Thread_Cb_arg_t * cb_arg = (WebddSocket_Thread_Cb_arg_t *)malloc(sizeof(WebddSocket_Thread_Cb_arg_t));
+            cb_arg->client = client;
+            cb_arg->type = Ws_Cb_Type_disconnect;
+            threadpool_add(evbase_threadpool_get_threadpool(client->httpServer->evb_thpool), webSocke_thread_cb, cb_arg);
+        }
         pthread_mutex_lock(&client->lock);
         evbase_threadpool_close_event(client->httpServer->evb_thpool, bufferevent_get_base(bev));
         pthread_mutex_lock(&client->httpServer->clientMap_lock);
@@ -915,7 +982,8 @@ static void bufferev_event_cb(struct bufferevent *bev, short events,void *ctx)
         pthread_mutex_unlock(&client->lock);
         httpChilent_free(client);
     }
-    close(bufferevent_getfd(bev));
+    //close(bufferevent_getfd(bev));
+    bufferevent_lock(bev);
     bufferevent_free(bev);
     /* bufferevent_unlock(bev); */
 }
@@ -947,13 +1015,19 @@ void httpChilent_Close_nolock(struct httpChilent_t * client)
     bufferevent_disable(client->bev, EV_WRITE | EV_READ);
     if(client != NULL)
     {
-
+        if(client->stat == HTTP_WS_DATA)
+        {
+            WebddSocket_Thread_Cb_arg_t * cb_arg = (WebddSocket_Thread_Cb_arg_t *)malloc(sizeof(WebddSocket_Thread_Cb_arg_t));
+            cb_arg->client = client;
+            cb_arg->type = Ws_Cb_Type_disconnect;
+            threadpool_add(evbase_threadpool_get_threadpool(client->httpServer->evb_thpool), webSocke_thread_cb, cb_arg);
+        }
         evbase_threadpool_close_event(client->httpServer->evb_thpool, bufferevent_get_base(client->bev));
         client->httpServer->clientMap->erase(client->bev);
 
         httpChilent_free(client);
     }
-    close(bufferevent_getfd(client->bev));
+    bufferevent_unlock(client->bev);
     bufferevent_free(client->bev);
 
 }
@@ -997,7 +1071,7 @@ static void listener_cd(struct evconnlistener *listener, evutil_socket_t fd, str
     memset(client, 0, sizeof(struct httpChilent_t));
 
     memcpy(&client->addr, sa, sizeof(sizeof(struct sockaddr_in)));
-
+    client->ws_weite_cb_flage = 1;
     client->bev = bev;
     client->httpServer = httpServer;
 
@@ -1050,7 +1124,31 @@ int httpServer_setHttpHandler(httpServer_t *httpServer, httpd_handler_t handler)
     pthread_mutex_unlock(&httpServer->lock);
     return 0;
 }
-int httpServer_setWebSocket_read_cb(httpServer_t * httpServer, webSocket_read_cb_t ws_read_cb,const char * url)
+int HttpServer_webSocket_close(httpChilent_t *httpChilent)
+{
+    return ev_webSocket_send(httpChilent->bev, NULL , 0, false, WCT_DISCONN);
+}
+int HttpServer_webSocket_close_on_cb(httpChilent_t *httpChilent)
+{
+    httpChilent->ws_weite_cb_flage = 0;
+    return ev_webSocket_send(httpChilent->bev, NULL , 0, false, WCT_DISCONN);
+}
+int HttpServer_webSocket_send(httpChilent_t *httpChilent, const char *data, size_t dataLen)
+{
+    return ev_webSocket_send(httpChilent->bev, (unsigned char *)data , dataLen, false, WCT_TXTDATA);
+}
+int httpServer_setWebSocket_cb(httpServer_t * httpServer, webSocket_cb_t ws_write_cb, webSocket_cb_t ws_connect_cb, webSocket_cb_t ws_disConnect_cb)
+{
+    if(httpServer == NULL)
+        return -1;
+    pthread_mutex_lock(&httpServer->lock);
+    httpServer->ws_weite_cb = ws_write_cb;
+    httpServer->ws_connect_cb = ws_connect_cb;
+    httpServer->ws_disconnect_cb = ws_disConnect_cb;
+    pthread_mutex_unlock(&httpServer->lock);
+    return 0;
+}
+int httpServer_setWebSocket_read_cb(httpServer_t * httpServer, webSocket_cb_t ws_read_cb,const char * url)
 {
     if(httpServer == NULL)
         return -1;

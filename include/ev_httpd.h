@@ -1,10 +1,10 @@
 /*************************************************************************
-# > File Name: Http_websocket/include/ev_httpd.h
+# > File Name: include/ev_httpd.h
 # > Author: SSZL
 # > Mail: sszllzss@foxmail.com
 # > Blog: sszlbg.cn
 # > Created Time: 2018-09-24 13:53:55
-# > Revise Time: 2018-10-15 15:47:33
+# > Revise Time: 2018-11-08 12:32:32
  ************************************************************************/
 
 #ifndef _EV_HTTPD_H
@@ -15,6 +15,7 @@
 #include <map>
 #include <arpa/inet.h>
 #include "ev_websocket.h"
+#include "evbase_threadpool.h"
 #define STRING std::string
 #define HeadParameterMap  std::map<STRING, STRING>
 #define HaedParameteMapPairi(key,value) std::pair<STRING, STRING>(key , value)
@@ -51,7 +52,7 @@
 typedef struct httpServer_t httpServer_t;
 typedef struct httpChilent_t httpChilent_t;
 typedef void (*httpd_handler_t)(struct httpChilent_t *chilent);
-typedef void (*webSocket_read_cb_t)(struct httpChilent_t *chilent);
+typedef void (*webSocket_cb_t)(struct httpChilent_t *chilent);
 typedef struct http_request_t http_request_t;
 typedef struct http_resqonse_t http_resqonse_t;
 struct http_request_t
@@ -71,6 +72,7 @@ struct http_resqonse_t
     char * resqonse_data;
     unsigned Resqonse_data_len;
 };
+//现在才发现 chilent 拼错了 我这个人比较懒 懒得改了 
 enum httpChilentStat_t
 {
     HTTP_DISCONNECTED = 0,/*未连接*/ 
@@ -92,6 +94,7 @@ struct httpChilent_t
     Websocket_CommunicationType ws_data_type;
     struct sockaddr addr;
     struct timeval final_optime;
+    unsigned char ws_weite_cb_flage;
 };
 /* resqonse这个函数 内部 对 client->lock进行了加锁 请在调用时 解锁 client->lock */
 int resqonse(struct httpChilent_t *client);
@@ -101,9 +104,14 @@ int http_resqonse_free(struct http_resqonse_t *resqonse);
 int http_request_free(struct http_request_t *request);
 void httpChilent_Close(struct httpChilent_t * client);
 void httpChilent_Close_nolock(struct httpChilent_t * client);
-int httpServer_setWebSocket_read_cb(httpServer_t * httpServer, webSocket_read_cb_t ws_read_cb,const char * url);
+int httpServer_setWebSocket_read_cb(httpServer_t * httpServer, webSocket_cb_t ws_read_cb,const char * url);
+int httpServer_setWebSocket_cb(httpServer_t * httpServer, webSocket_cb_t ws_write_cb, webSocket_cb_t ws_connect_cb, webSocket_cb_t ws_disConnect_cb);
 int httpServer_setHttpHandler(httpServer_t *httpServer, httpd_handler_t handler);
 void httpServer_setArg(httpServer_t *httpServer, void * arg);
 void* httpServer_getArg(httpServer_t *httpServer);
+int HttpServer_webSocket_send(httpChilent_t * httpChilent,const char *data, size_t dataLen);
+int HttpServer_webSocket_close(httpChilent_t *httpChilent);
+int HttpServer_webSocket_close_on_cb(httpChilent_t *httpChilent);
+threadpool_t *  HttpServer_GetThreadPool(httpServer_t * httpServer);
 #endif
 
