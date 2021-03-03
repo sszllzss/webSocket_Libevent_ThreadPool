@@ -22,3 +22,5 @@
 >>> * 把动态库的绝对路径添加到文件中 一行一个目录
 >>> * sudo ldconfig -v
 >>> * OK可以了
+
+## [Github](https://github.com/sszllzss/webSocket_Libevent_ThreadPool/) [Gitee](https://gitee.com/sszl_blog/webSocket_Libevent_ThreadPool)
